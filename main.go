@@ -7,9 +7,12 @@ import (
 	"path"
 	"runtime"
 	"log"
+	"math"
+	"io"
 )
 
 var FilenameMap map[string][]string
+const filechunk = 8192
 
 func find(inputDir string) {
 	visit := func (filePath string, info os.FileInfo, err error) error {
@@ -31,6 +34,30 @@ func find(inputDir string) {
 	if err!= nil{
 		log.Fatal(err)
 	}
+}
+
+func md5(filePath string)[]byte{
+	file, error := os.Open(filePath)
+	if error != nil {
+		return nil
+	}
+	defer file.Close()
+
+	info, _ := file.Stat()
+	size := info.Size()
+
+	blocks := uint64(math.Ceil(float64(size) / float64(filechunk)))
+
+	hashsum := md5.New()
+
+	for i := uint64(0); i < blocks; i++ {
+		blocksize := int(math.Min(filechunk, float64(size-int64(i*filechunk))))
+		buf := make([] byte, blocksize)
+		file.Read(buf)
+		io.WriteString(hashsum, string(buf))   // append into the hash
+	}
+
+	return hashsum.Sum(nil)
 }
 
 func printFiles(){
